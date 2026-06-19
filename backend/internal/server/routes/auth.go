@@ -217,6 +217,12 @@ func RegisterAuthRoutes(
 		settings.GET("/email-unsubscribe", h.Setting.UnsubscribeNotificationEmail)
 	}
 
+	// 公开「模型广场」（无需认证）：展示所有 active 渠道的可用模型 + 平台 + 价格
+	public := v1.Group("/public")
+	{
+		public.GET("/plaza", h.AvailableChannel.PublicList)
+	}
+
 	// 需要认证的当前用户信息
 	authenticated := v1.Group("")
 	authenticated.Use(gin.HandlerFunc(jwtAuth))

@@ -1,4 +1,18 @@
 export default {
+  // 模型广场（公开）
+  plaza: {
+    title: '模型广场',
+    subtitle: '浏览所有可用模型、平台与价格',
+    searchPlaceholder: '搜索模型...',
+    allPlatforms: '全部',
+    input: '输入',
+    output: '输出',
+    perRequest: '每次请求',
+    priceUnknown: '未设置价格',
+    loading: '加载中...',
+    loadError: '加载模型失败',
+    empty: '暂无可用模型'
+  },
   // Home Page
   home: {
     viewOnGithub: '在 GitHub 上查看',

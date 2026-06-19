@@ -1,4 +1,18 @@
 export default {
+  // Model Plaza (public)
+  plaza: {
+    title: 'Model Plaza',
+    subtitle: 'Browse all available models, platforms and pricing',
+    searchPlaceholder: 'Search models...',
+    allPlatforms: 'All',
+    input: 'Input',
+    output: 'Output',
+    perRequest: 'Per request',
+    priceUnknown: 'Pricing not set',
+    loading: 'Loading...',
+    loadError: 'Failed to load models',
+    empty: 'No models available'
+  },
   // Home Page
   home: {
     viewOnGithub: 'View on GitHub',

@@ -24,6 +24,10 @@ type AvailableChannelHandler struct {
 	channelService *service.ChannelService
 	apiKeyService  *service.APIKeyService
 	settingService *service.SettingService
+	// 以下依赖供公开「模型广场」(PublicList)使用:按分组取可路由模型 + 全局定价。
+	gatewayService *service.GatewayService
+	groupRepo      service.GroupRepository
+	pricingService *service.PricingService
 }
 
 // NewAvailableChannelHandler 创建用户侧可用渠道 handler。
@@ -31,11 +35,17 @@ func NewAvailableChannelHandler(
 	channelService *service.ChannelService,
 	apiKeyService *service.APIKeyService,
 	settingService *service.SettingService,
+	gatewayService *service.GatewayService,
+	groupRepo service.GroupRepository,
+	pricingService *service.PricingService,
 ) *AvailableChannelHandler {
 	return &AvailableChannelHandler{
 		channelService: channelService,
 		apiKeyService:  apiKeyService,
 		settingService: settingService,
+		gatewayService: gatewayService,
+		groupRepo:      groupRepo,
+		pricingService: pricingService,
 	}
 }
 
@@ -164,6 +174,96 @@ func (h *AvailableChannelHandler) List(c *gin.Context) {
 	}
 
 	response.Success(c, out)
+}
+
+// plazaModel 公开「模型广场」中的单个模型条目。
+type plazaModel struct {
+	Name     string                     `json:"name"`
+	Platform string                     `json:"platform"`
+	Groups   []string                   `json:"groups"`
+	Pricing  *userSupportedModelPricing `json:"pricing"`
+}
+
+// PublicList 列出所有 active 非专属分组下可路由的模型，用于公开「模型广场」（无需认证）。
+// 模型来源与 GET /v1/models 一致（各分组账号的 model_mapping 白名单），价格回落到
+// 全局 LiteLLM 数据。跳过专属分组（IsExclusive），避免暴露面向特定用户的私有供给。
+// GET /api/v1/public/plaza
+func (h *AvailableChannelHandler) PublicList(c *gin.Context) {
+	ctx := c.Request.Context()
+	groups, err := h.groupRepo.ListActive(ctx)
+	if err != nil {
+		response.ErrorFrom(c, err)
+		return
+	}
+
+	byKey := make(map[string]*plazaModel)
+	order := make([]string, 0)
+	for i := range groups {
+		g := groups[i]
+		if g.IsExclusive {
+			continue
+		}
+		gid := g.ID
+		for _, name := range h.gatewayService.GetAvailableModels(ctx, &gid, g.Platform) {
+			key := g.Platform + "::" + name
+			m, ok := byKey[key]
+			if !ok {
+				m = &plazaModel{
+					Name:     name,
+					Platform: g.Platform,
+					Groups:   []string{},
+					Pricing:  h.plazaModelPricing(name),
+				}
+				byKey[key] = m
+				order = append(order, key)
+			}
+			if !containsString(m.Groups, g.Name) {
+				m.Groups = append(m.Groups, g.Name)
+			}
+		}
+	}
+
+	out := make([]plazaModel, 0, len(order))
+	for _, k := range order {
+		out = append(out, *byKey[k])
+	}
+	sort.SliceStable(out, func(i, j int) bool { return out[i].Name < out[j].Name })
+	response.Success(c, out)
+}
+
+// plazaModelPricing 用全局 LiteLLM 定价合成一份展示用价格（每 token，USD）；无数据返回 nil。
+func (h *AvailableChannelHandler) plazaModelPricing(model string) *userSupportedModelPricing {
+	if h.pricingService == nil {
+		return nil
+	}
+	lp := h.pricingService.GetModelPricing(model)
+	if lp == nil {
+		return nil
+	}
+	pricing := &userSupportedModelPricing{
+		BillingMode: string(service.BillingModeToken),
+		Intervals:   []userPricingIntervalDTO{},
+	}
+	if lp.InputCostPerToken > 0 {
+		v := lp.InputCostPerToken
+		pricing.InputPrice = &v
+	}
+	if lp.OutputCostPerToken > 0 {
+		v := lp.OutputCostPerToken
+		pricing.OutputPrice = &v
+	}
+	if lp.CacheCreationInputTokenCost > 0 {
+		v := lp.CacheCreationInputTokenCost
+		pricing.CacheWritePrice = &v
+	}
+	if lp.CacheReadInputTokenCost > 0 {
+		v := lp.CacheReadInputTokenCost
+		pricing.CacheReadPrice = &v
+	}
+	if pricing.InputPrice == nil && pricing.OutputPrice == nil {
+		return nil
+	}
+	return pricing
 }
 
 // buildPlatformSections 把一个渠道按 visibleGroups 的平台集合拆成有序的 section 列表：

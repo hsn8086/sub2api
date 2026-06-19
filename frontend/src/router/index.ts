@@ -175,6 +175,16 @@ const routes: RouteRecordRaw[] = [
       title: 'Legal Document'
     }
   },
+  {
+    path: '/plaza',
+    name: 'Plaza',
+    component: () => import('@/views/public/PlazaView.vue'),
+    meta: {
+      requiresAuth: false,
+      title: 'Model Plaza',
+      titleKey: 'plaza.title'
+    }
+  },
 
   // ==================== User Routes ====================
   {

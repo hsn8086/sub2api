@@ -51,6 +51,14 @@
           <!-- Language Switcher -->
           <LocaleSwitcher />
 
+          <!-- Model Plaza Link -->
+          <router-link
+            to="/plaza"
+            class="rounded-lg px-3 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-800 dark:text-dark-300 dark:hover:bg-dark-800 dark:hover:text-white"
+          >
+            {{ t('plaza.title') }}
+          </router-link>
+
           <!-- Doc Link -->
           <a
             v-if="docUrl"
