@@ -33,14 +33,20 @@
       </div>
 
       <!-- Controls -->
-      <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <input
-          v-model="search"
-          type="text"
-          :placeholder="t('plaza.searchPlaceholder')"
-          class="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-gray-800 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 dark:border-dark-700 dark:bg-dark-800 dark:text-white sm:max-w-xs"
-        />
-        <div class="flex flex-wrap gap-2">
+      <div class="mb-6 space-y-3 rounded-xl border border-gray-200 bg-white/60 p-4 dark:border-dark-700 dark:bg-dark-800/40">
+        <!-- Search -->
+        <div class="relative">
+          <input
+            v-model="search"
+            type="text"
+            :placeholder="t('plaza.searchPlaceholder')"
+            class="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-gray-800 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 dark:border-dark-700 dark:bg-dark-900 dark:text-white"
+          />
+        </div>
+
+        <!-- Platform filter -->
+        <div class="flex flex-wrap items-center gap-2">
+          <span class="w-14 shrink-0 text-xs font-medium text-gray-400 dark:text-dark-500">{{ t('plaza.platform') }}</span>
           <button
             v-for="p in platformOptions"
             :key="p"
@@ -49,11 +55,43 @@
             :class="
               activePlatform === p
                 ? 'bg-primary-600 text-white'
-                : 'bg-gray-200 text-gray-600 hover:bg-gray-300 dark:bg-dark-800 dark:text-dark-300 dark:hover:bg-dark-700'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-dark-700 dark:text-dark-300 dark:hover:bg-dark-600'
             "
             @click="activePlatform = p"
           >
             {{ p === 'all' ? t('plaza.allPlatforms') : p }}
+          </button>
+        </div>
+
+        <!-- Group filter -->
+        <div v-if="groupOptions.length > 2" class="flex flex-wrap items-center gap-2">
+          <span class="w-14 shrink-0 text-xs font-medium text-gray-400 dark:text-dark-500">{{ t('plaza.group') }}</span>
+          <button
+            v-for="grp in groupOptions"
+            :key="grp"
+            type="button"
+            class="rounded-full px-3 py-1 text-xs font-medium transition-colors"
+            :class="
+              activeGroup === grp
+                ? 'bg-primary-600 text-white'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-dark-700 dark:text-dark-300 dark:hover:bg-dark-600'
+            "
+            @click="activeGroup = grp"
+          >
+            {{ grp === 'all' ? t('plaza.allGroups') : grp }}
+          </button>
+        </div>
+
+        <!-- Count + clear -->
+        <div class="flex items-center justify-between pt-1 text-xs text-gray-400 dark:text-dark-500">
+          <span>{{ t('plaza.countLabel', { n: filteredModels.length, total: models.length }) }}</span>
+          <button
+            v-if="search || activePlatform !== 'all' || activeGroup !== 'all'"
+            type="button"
+            class="text-primary-600 hover:underline dark:text-primary-400"
+            @click="resetFilters"
+          >
+            {{ t('plaza.clearFilters') }}
           </button>
         </div>
       </div>
@@ -90,12 +128,25 @@
             >{{ m.platform }}</span>
           </div>
 
-          <div class="mb-3 flex flex-wrap gap-1.5">
-            <span
-              v-for="g in m.groups"
-              :key="g"
-              class="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-500 dark:bg-dark-700 dark:text-dark-300"
-            >{{ g }}</span>
+          <div class="mb-3">
+            <div class="mb-1 text-[11px] uppercase tracking-wide text-gray-400 dark:text-dark-500">
+              {{ t('plaza.groupsLabel', { n: m.groups.length }) }}
+            </div>
+            <div class="flex flex-wrap gap-1.5">
+              <span
+                v-for="g in m.groups"
+                :key="g.name"
+                class="inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs"
+                :class="
+                  g.subscription_type === 'subscription'
+                    ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
+                    : 'bg-gray-100 text-gray-600 dark:bg-dark-700 dark:text-dark-300'
+                "
+              >
+                {{ g.name }}
+                <span v-if="g.rate_multiplier && g.rate_multiplier !== 1" class="font-mono opacity-70">×{{ g.rate_multiplier }}</span>
+              </span>
+            </div>
           </div>
 
           <div class="mt-auto space-y-1 border-t border-gray-100 pt-3 text-xs dark:border-dark-700">
@@ -145,6 +196,7 @@ const loading = ref(true)
 const error = ref(false)
 const search = ref('')
 const activePlatform = ref('all')
+const activeGroup = ref('all')
 const models = ref<PlazaModel[]>([])
 
 let controller: AbortController | null = null
@@ -155,14 +207,27 @@ const platformOptions = computed(() => {
   return ['all', ...Array.from(set).sort()]
 })
 
+const groupOptions = computed(() => {
+  const set = new Set<string>()
+  for (const m of models.value) for (const g of m.groups) set.add(g.name)
+  return ['all', ...Array.from(set).sort()]
+})
+
 const filteredModels = computed(() => {
   const q = search.value.trim().toLowerCase()
   return models.value.filter((m) => {
     if (activePlatform.value !== 'all' && m.platform !== activePlatform.value) return false
+    if (activeGroup.value !== 'all' && !m.groups.some((g) => g.name === activeGroup.value)) return false
     if (q && !m.name.toLowerCase().includes(q)) return false
     return true
   })
 })
+
+function resetFilters() {
+  search.value = ''
+  activePlatform.value = 'all'
+  activeGroup.value = 'all'
+}
 
 function perM(v: number | null | undefined): string {
   if (v == null) return '-'

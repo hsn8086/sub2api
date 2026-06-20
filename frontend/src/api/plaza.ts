@@ -6,11 +6,18 @@
 import { apiClient } from './client'
 import type { UserSupportedModelPricing } from './channels'
 
-/** 公开模型广场中的单个模型条目(后端 /public/plaza 返回的扁平结构)。 */
+/** 模型所属分组(含默认倍率与订阅类型)。 */
+export interface PlazaGroup {
+  name: string
+  rate_multiplier: number
+  subscription_type: string
+}
+
+/** 公开模型广场中的单个模型条目(后端 /public/plaza 返回的扁平结构)。一个模型可属于多个分组。 */
 export interface PlazaModel {
   name: string
   platform: string
-  groups: string[]
+  groups: PlazaGroup[]
   pricing: UserSupportedModelPricing | null
 }
 

@@ -176,11 +176,18 @@ func (h *AvailableChannelHandler) List(c *gin.Context) {
 	response.Success(c, out)
 }
 
-// plazaModel 公开「模型广场」中的单个模型条目。
+// plazaGroup 模型所属分组的公开信息。
+type plazaGroup struct {
+	Name             string  `json:"name"`
+	RateMultiplier   float64 `json:"rate_multiplier"`
+	SubscriptionType string  `json:"subscription_type"`
+}
+
+// plazaModel 公开「模型广场」中的单个模型条目。一个模型可同时归属多个分组。
 type plazaModel struct {
 	Name     string                     `json:"name"`
 	Platform string                     `json:"platform"`
-	Groups   []string                   `json:"groups"`
+	Groups   []plazaGroup               `json:"groups"`
 	Pricing  *userSupportedModelPricing `json:"pricing"`
 }
 
@@ -211,21 +218,27 @@ func (h *AvailableChannelHandler) PublicList(c *gin.Context) {
 				m = &plazaModel{
 					Name:     name,
 					Platform: g.Platform,
-					Groups:   []string{},
+					Groups:   []plazaGroup{},
 					Pricing:  h.plazaModelPricing(name),
 				}
 				byKey[key] = m
 				order = append(order, key)
 			}
-			if !containsString(m.Groups, g.Name) {
-				m.Groups = append(m.Groups, g.Name)
+			if !plazaHasGroup(m.Groups, g.Name) {
+				m.Groups = append(m.Groups, plazaGroup{
+					Name:             g.Name,
+					RateMultiplier:   g.RateMultiplier,
+					SubscriptionType: g.SubscriptionType,
+				})
 			}
 		}
 	}
 
 	out := make([]plazaModel, 0, len(order))
 	for _, k := range order {
-		out = append(out, *byKey[k])
+		m := byKey[k]
+		sort.SliceStable(m.Groups, func(i, j int) bool { return m.Groups[i].Name < m.Groups[j].Name })
+		out = append(out, *m)
 	}
 	sort.SliceStable(out, func(i, j int) bool { return out[i].Name < out[j].Name })
 	response.Success(c, out)
@@ -264,6 +277,16 @@ func (h *AvailableChannelHandler) plazaModelPricing(model string) *userSupported
 		return nil
 	}
 	return pricing
+}
+
+// plazaHasGroup 判断分组列表里是否已有同名分组。
+func plazaHasGroup(groups []plazaGroup, name string) bool {
+	for _, g := range groups {
+		if g.Name == name {
+			return true
+		}
+	}
+	return false
 }
 
 // buildPlatformSections 把一个渠道按 visibleGroups 的平台集合拆成有序的 section 列表：
