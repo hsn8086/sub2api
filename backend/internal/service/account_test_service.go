@@ -235,9 +235,7 @@ func (s *AccountTestService) testClaudeAccountConnection(c *gin.Context, account
 		// API Key - use x-api-key header
 		useBearer = false
 		authToken = account.GetCredential("api_key")
-		if authToken == "" {
-			return s.sendErrorAndEnd(c, "No API key available")
-		}
+		// apikey 可选:空 key 不预先报错,放行由上游判定(部分免费上游免鉴权)
 
 		baseURL := account.GetBaseURL()
 		if baseURL == "" {
@@ -437,10 +435,10 @@ func (s *AccountTestService) testBedrockAccountConnection(c *gin.Context, ctx co
 	// Sign or set auth based on account type
 	if account.IsBedrockAPIKey() {
 		apiKey := account.GetCredential("api_key")
-		if apiKey == "" {
-			return s.sendErrorAndEnd(c, "No API key available")
+		// apikey 可选:空 key 放行(仅非空时附带 Authorization 头)
+		if apiKey != "" {
+			req.Header.Set("Authorization", "Bearer "+apiKey)
 		}
-		req.Header.Set("Authorization", "Bearer "+apiKey)
 	} else {
 		signer, err := NewBedrockSignerFromAccount(account)
 		if err != nil {
@@ -542,9 +540,7 @@ func (s *AccountTestService) testOpenAIAccountConnection(c *gin.Context, account
 	} else if account.Type == "apikey" {
 		// API Key - use Platform API
 		authToken = account.GetOpenAIApiKey()
-		if authToken == "" {
-			return s.sendErrorAndEnd(c, "No API key available")
-		}
+		// apikey 可选:空 key 放行,交由上游判定
 
 		baseURL := account.GetOpenAIBaseURL()
 		if baseURL == "" {
@@ -712,9 +708,7 @@ func (s *AccountTestService) testOpenAICompactConnection(c *gin.Context, account
 		chatgptAccountID = account.GetChatGPTAccountID()
 	case account.Type == AccountTypeAPIKey:
 		authToken = account.GetOpenAIApiKey()
-		if authToken == "" {
-			return s.sendErrorAndEnd(c, "No API key available")
-		}
+		// apikey 可选:空 key 放行,交由上游判定
 		baseURL := account.GetOpenAIBaseURL()
 		if baseURL == "" {
 			baseURL = "https://api.openai.com"
@@ -970,9 +964,7 @@ func (s *AccountTestService) testAntigravityAccountConnection(c *gin.Context, ac
 // buildGeminiAPIKeyRequest builds request for Gemini API Key accounts
 func (s *AccountTestService) buildGeminiAPIKeyRequest(ctx context.Context, account *Account, modelID string, payload []byte) (*http.Request, error) {
 	apiKey := account.GetCredential("api_key")
-	if strings.TrimSpace(apiKey) == "" {
-		return nil, fmt.Errorf("no API key available")
-	}
+	// apikey 可选:空 key 放行,交由上游判定
 
 	baseURL := account.GetCredential("base_url")
 	if baseURL == "" {
@@ -993,7 +985,9 @@ func (s *AccountTestService) buildGeminiAPIKeyRequest(ctx context.Context, accou
 	}
 
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("x-goog-api-key", apiKey)
+	if apiKey != "" {
+		req.Header.Set("x-goog-api-key", apiKey)
+	}
 
 	return req, nil
 }
@@ -1473,9 +1467,7 @@ func (s *AccountTestService) processOpenAIStream(c *gin.Context, body io.Reader)
 // testOpenAIImageAPIKey tests OpenAI image generation using an API Key account.
 func (s *AccountTestService) testOpenAIImageAPIKey(c *gin.Context, ctx context.Context, account *Account, modelID, prompt string) error {
 	authToken := account.GetOpenAIApiKey()
-	if authToken == "" {
-		return s.sendErrorAndEnd(c, "No API key available")
-	}
+	// apikey 可选:空 key 放行,交由上游判定
 
 	baseURL := account.GetOpenAIBaseURL()
 	if baseURL == "" {
