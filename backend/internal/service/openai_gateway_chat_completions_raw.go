@@ -119,9 +119,7 @@ func (s *OpenAIGatewayService) forwardAsRawChatCompletions(
 
 	// 5. Build upstream request
 	apiKey := account.GetOpenAIApiKey()
-	if apiKey == "" {
-		return nil, fmt.Errorf("account %d missing api_key", account.ID)
-	}
+	// apikey 可选:空 key 放行(部分免费上游如 opencode zen 免鉴权),由上游判定
 	baseURL := account.GetOpenAIBaseURL()
 	if baseURL == "" {
 		baseURL = "https://api.openai.com"

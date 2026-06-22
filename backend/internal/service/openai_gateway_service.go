@@ -2299,11 +2299,8 @@ func (s *OpenAIGatewayService) GetAccessToken(ctx context.Context, account *Acco
 		}
 		return accessToken, "oauth", nil
 	case AccountTypeAPIKey:
-		apiKey := account.GetOpenAIApiKey()
-		if apiKey == "" {
-			return "", "", errors.New("api_key not found in credentials")
-		}
-		return apiKey, "apikey", nil
+		// apikey 可选:空 key 放行(部分免费上游如 opencode zen 免鉴权),由上游判定
+		return account.GetOpenAIApiKey(), "apikey", nil
 	default:
 		return "", "", fmt.Errorf("unsupported account type: %s", account.Type)
 	}

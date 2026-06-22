@@ -3965,11 +3965,9 @@ func (s *GatewayService) GetAccessToken(ctx context.Context, account *Account) (
 		// Both oauth and setup-token use OAuth token flow
 		return s.getOAuthToken(ctx, account)
 	case AccountTypeAPIKey:
-		apiKey := account.GetCredential("api_key")
-		if apiKey == "" {
-			return "", "", errors.New("api_key not found in credentials")
-		}
-		return apiKey, "apikey", nil
+		// apikey 可选:空 key 放行(部分免费上游如 opencode zen 免鉴权),
+		// 由上游判定;下游设 x-api-key/Authorization 为空,严格上游会自行拒绝。
+		return account.GetCredential("api_key"), "apikey", nil
 	case AccountTypeBedrock:
 		return "", "bedrock", nil // Bedrock 使用 SigV4 签名或 API Key，由 forwardBedrock 处理
 	case AccountTypeServiceAccount:
