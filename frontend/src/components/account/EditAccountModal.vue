@@ -3697,14 +3697,16 @@ const handleSubmit = async () => {
       // 后端响应已脱敏：currentCredentials 不会再包含 api_key 原文。
       // 用户填入新值则覆盖；留空时优先看 credentials_status.has_api_key；
       // 若后端尚未升级（无 credentials_status），回退读旧结构 currentCredentials.api_key。
-      // 两者都无才报错。
+      // apikey 可选:部分免费上游免鉴权,空 key 放行由后端/上游判定。
       const hasExistingApiKey =
         props.account.credentials_status?.has_api_key ?? Boolean(currentCredentials.api_key)
       if (editApiKey.value.trim()) {
         newCredentials.api_key = editApiKey.value.trim()
-      } else if (!hasExistingApiKey) {
-        appStore.showError(t('admin.accounts.apiKeyIsRequired'))
-        return
+      } else if (hasExistingApiKey) {
+        // 有旧 key,不填表示保留(后端识别 undefined = 不修改)
+      } else {
+        // 无旧 key + 不填 = 真的空 key,放行(部分免费上游免鉴权)
+        newCredentials.api_key = ''
       }
 
       // Add model mapping if configured（OpenAI 开启自动透传时保留现有映射，不再编辑）

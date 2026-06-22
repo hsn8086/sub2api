@@ -1027,11 +1027,10 @@
           <p class="input-hint">{{ baseUrlHint }}</p>
         </div>
         <div>
-          <label class="input-label">{{ t('admin.accounts.apiKeyRequired') }}</label>
+          <label class="input-label">{{ t('admin.accounts.apiKey') }}</label>
           <input
             v-model="apiKeyValue"
             type="password"
-            required
             class="input font-mono"
             :placeholder="
               form.platform === 'openai'
@@ -4606,10 +4605,7 @@ const handleSubmit = async () => {
   }
 
   // For apikey type, create directly
-  if (!apiKeyValue.value.trim()) {
-    appStore.showError(t('admin.accounts.pleaseEnterApiKey'))
-    return
-  }
+  // apikey 可选:空 key 放行(部分免费上游免鉴权),由后端/上游判定
 
   // Determine default base URL based on platform
   const defaultBaseUrl =
