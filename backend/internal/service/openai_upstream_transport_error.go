@@ -44,6 +44,7 @@ var openAIPersistentTransportErrorMarkers = []string{
 	"authentication failed",         // SOCKS5 RFC1929 / proxy credentials rejected (expired account)
 	"proxy authentication required", // HTTP proxy 407
 	"connection refused",            // proxy/upstream endpoint down
+	"eof",                           // upstream/proxy closed the connection before an HTTP response
 	"no route to host",
 	"network is unreachable",
 	"no such host", // DNS resolution failure (bad/expired proxy hostname)

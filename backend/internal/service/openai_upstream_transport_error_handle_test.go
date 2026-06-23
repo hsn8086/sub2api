@@ -207,6 +207,8 @@ func TestForwardAsRawChatCompletions_TransportErrorFailsOver(t *testing.T) {
 	var fo *UpstreamFailoverError
 	require.True(t, errors.As(err, &fo), "transport error must trigger account failover")
 	require.Equal(t, http.StatusBadGateway, fo.StatusCode)
-	require.Empty(t, repo.tempUnschedCalls, "plain EOF is transient: fail over but do not evict")
+	require.Len(t, repo.tempUnschedCalls, 1, "EOF should temporarily unschedule the account")
+	require.Equal(t, int64(81), repo.tempUnschedCalls[0].accountID)
+	require.Contains(t, repo.tempUnschedCalls[0].reason, "EOF")
 	require.Equal(t, 0, rec.Body.Len(), "service must not write a hard 502 before handler can fail over")
 }
